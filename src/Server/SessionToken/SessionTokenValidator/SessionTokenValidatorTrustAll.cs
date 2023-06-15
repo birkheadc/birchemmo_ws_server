@@ -4,9 +4,11 @@ namespace BirchemmoWsServer.Server;
 /// </summary>
 public class SessionTokenValidatorTrustAll : ISessionTokenValidator
 {
-  public bool IsValid(SessionToken token)
+  public User? GetUser(SessionToken token)
   {
-    return !IsExpired(token);
+    if (IsExpired(token)) return null;
+    if (token.Profile is null) return new User();
+    else return new User(token.Profile.UserId, token.Profile.Role);
   }
 
   private bool IsExpired(SessionToken token)

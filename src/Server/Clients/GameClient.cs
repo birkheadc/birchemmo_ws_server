@@ -6,7 +6,7 @@ public interface IGameClient
 {
   Task RequestSessionToken();
   Task ConfirmSessionToken(bool isValid);
-  Task SendWorld(int[] world);
+  Task SendWorldState(ClientWorldState worldState);
 
-  Task SendOwnedPawns(List<Pawn> pawns, int? currentPawn);
+  Task SendPawnsState(ClientPawnsState pawnsState);
 }

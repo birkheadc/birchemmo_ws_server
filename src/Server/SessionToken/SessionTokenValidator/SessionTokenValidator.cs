@@ -2,7 +2,7 @@ namespace BirchemmoWsServer.Server;
 
 public class SessionTokenValidator : ISessionTokenValidator
 {
-  public bool IsValid(SessionToken token)
+  public User GetUser(SessionToken token)
   {
     throw new NotImplementedException();
   }

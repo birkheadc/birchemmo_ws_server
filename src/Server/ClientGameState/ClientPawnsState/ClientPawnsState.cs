@@ -6,7 +6,12 @@ namespace BirchemmoWsServer.Server;
 /// </summary>
 public record ClientPawnsState
 {
-  public List<Pawn> Pawns { get; set; } = new List<Pawn>();
-  public int? Current { get; set; }
-  public int AvailableNew { get; set; } = 0;
+  public List<Pawn> Pawns { get; set; }
+  public int AvailableNew { get; set; }
+
+  public ClientPawnsState(List<Pawn> pawns, int availableNew)
+  {
+    Pawns = pawns;
+    AvailableNew = availableNew;
+  }
 }

@@ -5,37 +5,29 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace BirchemmoWsServer.Server;
 
-[Authorize(Policy = "Test")]
+// [Authorize(Policy = "RequireValidatedUser")]
 public class GameHub : Hub<IGameClient>
 {
-  private readonly ISessionTokenValidator sessionTokenValidator;
+  private readonly IGameManager gameManager;
 
-  public GameHub(ISessionTokenValidator sessionTokenValidator)
+  public GameHub(IGameManager gameManager)
   {
-    this.sessionTokenValidator = sessionTokenValidator;
+    this.gameManager = gameManager;
   }
 
-  public override async Task OnConnectedAsync()
+  public async Task Ping()
   {
-    await Clients.Caller.RequestSessionToken();
+    User? user = GetUserFromContext(Context);
+    Console.WriteLine($"Received a ping from {user?.ToString()}.");
+    await Clients.Caller.ReturnPing();
   }
 
-  public Task SendSessionToken(SessionToken token)
+  public Task ReturnPing()
   {
-    Console.WriteLine("We received a session token!");
-    Console.WriteLine(token.ToString());
-
-    User? user = sessionTokenValidator.GetUser(token);
-
-    if (user is null) return Task.Run(() => {
-      Clients.Caller.ConfirmSessionToken(false);
-    });
-    
-    AddUserToContext(user, Context);
-    return Task.Run(() => {
-      Clients.Caller.ConfirmSessionToken(true);
-    });
+    Console.WriteLine("Client returned ping.");
+    return Task.CompletedTask;
   }
+
   public async Task RequestWorldState()
   {
     Console.WriteLine("World requested from client...");
@@ -49,30 +41,29 @@ public class GameHub : Hub<IGameClient>
     pawns.Add(new Pawn(title: "Pawn 1"));
 
     User? user = GetUserFromContext(Context);
+    if (user is null) return;
 
-    ClientPawnsState pawnsState = new()
-    {
-      Pawns = pawns,
-      Current = 0,
-      AvailableNew = user?.Role == Role.SUPER_ADMIN ? 10 : 1
-    };
+    ClientPawnsState pawnsState = gameManager.GetPawnsStateForUser(user);
 
     await Clients.Caller.SendPawnsState(pawnsState);
   }
 
-  private void AddUserToContext(User user, HubCallerContext context)
-  {
-    Console.WriteLine("Adding user to context:");
-    Console.WriteLine(user.ToString());
-    context.Items.Add("user", user);
-  }
-
   private User? GetUserFromContext(HubCallerContext context)
   {
-    context.Items.TryGetValue("user", out var _user);
-    Console.WriteLine("Found user in context:");
-    User? user = _user as User;
-    Console.WriteLine(user is null ? "null" : (user as User).ToString());
-    return user;
+    Console.WriteLine("");
+    Console.WriteLine("Getting User From Context...");
+    Console.WriteLine("All user's claims: ");
+    List<Claim> claims = Context.User?.Claims.ToList() ?? new List<Claim>();
+    foreach (Claim claim in claims)
+    {
+      Console.WriteLine("----------------------------------------");
+      Console.WriteLine($"Claim.Type | {claim.Type}");
+      Console.WriteLine($"Claim.Value | {claim.Value}");
+      Console.WriteLine($"Claim.ValueType | {claim.ValueType}");
+      Console.WriteLine("----------------------------------------");
+    }
+    Console.WriteLine($"Is user authenticated? | {Context.User?.Identity?.IsAuthenticated}");
+    Console.WriteLine("");
+    return Context.User is null ? null : new User(Context.User);
   }
 }

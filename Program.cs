@@ -1,18 +1,49 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using BirchemmoWsServer.Game;
 using BirchemmoWsServer.Server;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 bool isDevelopment = builder.Environment.IsDevelopment();
 
 // Add services to the container.
 builder.Services.AddSignalR();
-builder.Services.AddSingleton<ISessionTokenValidator>(
-  isDevelopment ? new SessionTokenValidatorTrustAll() : new SessionTokenValidator()
-);
 
-builder.Services.AddAuthorization(options =>
+builder.Services.AddSingleton<IWorldManager, WorldManager>();
+builder.Services.AddSingleton<IPlayersManager, PlayersManager>();
+builder.Services.AddSingleton<IPawnsManager, PawnsManager>();
+builder.Services.AddSingleton<IGameManager, GameManager>();
+
+builder.Services.AddAuthentication(options =>
 {
-  options.AddPolicy(name: "Test", policy => policy.RequireAssertion(_ => true));
-});
+  options.DefaultAuthenticateScheme = "SignalRAuthentication";
+  options.DefaultChallengeScheme = "SignalRAuthentication";
+}).AddScheme<SignalRAuthenticationOptions, SignalRAuthenticationHandler>("SignalRAuthentication", options => {});
+
+// builder.Services.AddAuthentication(options =>
+// {
+//   options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+//   options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+// }).AddJwtBearer(options =>
+// {
+//   options.TokenValidationParameters = new()
+//   {
+//     ValidateIssuer = false,
+//     ValidateAudience = false,
+//     ValidateLifetime = false,
+//     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("secret")),
+//     ValidateIssuerSigningKey = true
+//   };
+// });
+
+// builder.Services.AddAuthorization(options =>
+// {
+//   options.AddPolicy(name: "RequireValidatedUser", policy => policy.Requirements.Add(new RequreValidatedUserRequirement()));
+// });
+
+// builder.Services.AddSingleton<IAuthorizationHandler, RequireValidatedUserHandler>();
 
 builder.Services.AddCors(options =>
 {
@@ -34,12 +65,38 @@ var app = builder.Build();
 // app.UseHttpsRedirection();
 // app.UseStaticFiles();
 
-// app.UseRouting();
+app.UseRouting();
 
-app.UseAuthorization();
+app.UseAuthentication();
+// app.UseAuthorization();
 
 app.UseCors("All");
 
 app.MapHub<GameHub>("/game");
+
+// Create a token
+
+// User user = new User(Guid.NewGuid(), Role.SUPER_ADMIN);
+// List<Claim> claims = new();
+// claims.Add(new Claim(ClaimTypes.Role, user.Role.ToString()));
+// claims.Add(new Claim(ClaimTypes.Name, "super"));
+// claims.Add(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
+
+// SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes("secretsecretsecretsecretsecretsecret"));
+// SigningCredentials credentials = new(key, SecurityAlgorithms.HmacSha256);
+
+// SecurityTokenDescriptor descriptor = new()
+// {
+//   Subject = new ClaimsIdentity(claims),
+//   Expires = DateTime.UtcNow.AddDays(1),
+//   SigningCredentials = credentials
+// };
+
+// JwtSecurityTokenHandler handler = new();
+
+// var token = handler.CreateToken(descriptor);
+// Console.WriteLine("Token: ");
+// Console.WriteLine(handler.WriteToken(token));
+//
 
 app.Run();

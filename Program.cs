@@ -3,47 +3,65 @@ using System.Security.Claims;
 using System.Text;
 using BirchemmoWsServer.Game;
 using BirchemmoWsServer.Server;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 bool isDevelopment = builder.Environment.IsDevelopment();
 
 // Add services to the container.
-builder.Services.AddSignalR();
+
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddSingleton<IWorldManager, WorldManager>();
 builder.Services.AddSingleton<IPlayersManager, PlayersManager>();
 builder.Services.AddSingleton<IPawnsManager, PawnsManager>();
 builder.Services.AddSingleton<IGameManager, GameManager>();
 
-builder.Services.AddAuthentication(options =>
-{
-  options.DefaultAuthenticateScheme = "SignalRAuthentication";
-  options.DefaultChallengeScheme = "SignalRAuthentication";
-}).AddScheme<SignalRAuthenticationOptions, SignalRAuthenticationHandler>("SignalRAuthentication", options => {});
-
 // builder.Services.AddAuthentication(options =>
 // {
-//   options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-//   options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-// }).AddJwtBearer(options =>
-// {
-//   options.TokenValidationParameters = new()
-//   {
-//     ValidateIssuer = false,
-//     ValidateAudience = false,
-//     ValidateLifetime = false,
-//     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("secret")),
-//     ValidateIssuerSigningKey = true
-//   };
-// });
+//   options.DefaultAuthenticateScheme = "SignalRAuthentication";
+//   options.DefaultChallengeScheme = "SignalRAuthentication";
+// }).AddScheme<SignalRAuthenticationOptions, SignalRAuthenticationHandler>("SignalRAuthentication", options => {});
 
-// builder.Services.AddAuthorization(options =>
-// {
-//   options.AddPolicy(name: "RequireValidatedUser", policy => policy.Requirements.Add(new RequreValidatedUserRequirement()));
-// });
+builder.Services.AddAuthentication(options =>
+{
+  options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+  options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+}).AddJwtBearer(options =>
+{
+  options.TokenValidationParameters = new()
+  {
+    ValidateIssuer = false,
+    ValidateAudience = false,
+    ValidateLifetime = false,
+    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("secretsecretsecretsecretsecretsecret")),
+    ValidateIssuerSigningKey = true
+  };
+  
+  options.Events = new JwtBearerEvents
+  {
+    OnMessageReceived = context =>
+    {
+      var accessToken = context.Request.Query["access_token"];
+      var path = context.HttpContext.Request.Path;
+      if (!string.IsNullOrEmpty(accessToken) &&
+          (path.StartsWithSegments("/game")))
+      {
+          context.Token = accessToken;
+      }
+      return Task.CompletedTask;
+    }
+  };
+});
 
-// builder.Services.AddSingleton<IAuthorizationHandler, RequireValidatedUserHandler>();
+builder.Services.AddAuthorization(options =>
+{
+  options.AddPolicy(name: "RequireValidatedUser", policy => policy.AddRequirements(new RequireValidatedUserRequirement()));
+});
+
+builder.Services.AddSingleton<IAuthorizationHandler, RequireValidatedUserHandler>();
 
 builder.Services.AddCors(options =>
 {
@@ -58,6 +76,8 @@ builder.Services.AddCors(options =>
         });
 });
 
+builder.Services.AddSignalR();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -68,7 +88,7 @@ var app = builder.Build();
 app.UseRouting();
 
 app.UseAuthentication();
-// app.UseAuthorization();
+app.UseAuthorization();
 
 app.UseCors("All");
 

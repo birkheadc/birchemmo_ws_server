@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace BirchemmoWsServer.Server;
 
-public class RequreValidatedUserRequirement : IAuthorizationRequirement
+public class RequireValidatedUserRequirement : IAuthorizationRequirement
 {
-
+  
 } 

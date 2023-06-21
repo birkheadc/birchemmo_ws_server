@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace BirchemmoWsServer.Server;
 
-// [Authorize(Policy = "RequireValidatedUser")]
+[Authorize(Policy = "RequireValidatedUser")]
 public class GameHub : Hub<IGameClient>
 {
   private readonly IGameManager gameManager;
